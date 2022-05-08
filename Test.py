@@ -1,58 +1,58 @@
 import sys
-from PyQt5.QtWidgets import QMainWindow, QApplication, QAbstractItemView
-from Form_Orders import *
-from Form_TradingStatus import *
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-
-
-class FormOrders(QMainWindow, Ui_Form_Orders):
-    def __init__(self, parent=None):
-        super(FormOrders, self).__init__(parent)
-        self.setupUi(self)
-        self.pushButton_Hide.clicked.connect(self.hide)
-        self.model = QStandardItemModel(4, 3)
-        self.model.setHorizontalHeaderLabels(['id', '姓名', '年龄'])
-        self.listView.setModel(self.model)
-        item11 = QStandardItem("1")
-        item12 = QStandardItem("小明")
-        item13 = QStandardItem("20")
-        self.model.setItem(0, 0, item11)
-        self.model.setItem(0, 1, item12)
-        self.model.setItem(0, 2, item13)
-
-
-class FormTradingStatus(QMainWindow, Ui_Form_TradingStatus):
-    def __init__(self, parent=None):
-        super(FormTradingStatus, self).__init__(parent)
-        self.setupUi(self)
-        self.model = QStandardItemModel(4, 3)
-        self.model.setHorizontalHeaderLabels(['id', '姓名', '年龄'])
-        self.tableView_PnL.setModel(self.model)
-        self.tableView_PnL.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tableView_PnL.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.tableView_PnL.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # self.tableView_PnL.setGridStyle(Qt.)
-        item11 = QStandardItem("1")
-        item12 = QStandardItem("小明")
-        item13 = QStandardItem("20")
-        self.model.setItem(0, 0, item11)
-        self.model.setItem(0, 1, item12)
-        self.model.setItem(0, 2, item13)
-
-    def test(self, item):
-        print("You pressed on {0}x{1}".format(item.column(), item.row()))
-        self.tableView_PnL.clearSelection()
-        self.tableView_PnL.selectRow(item.row())
-
-    def test2(self, item):
-        print("clicked")
-        self.tableView_PnL.clearSelection()
-        self.tableView_PnL.selectRow(item.row())
-        pass
-
-    def test3(self, item):
-        print("selected clicked")
-        pass
+# from PyQt5.QtWidgets import QMainWindow, QApplication, QAbstractItemView
+# from Form_Orders import *
+# from Form_TradingStatus import *
+# from PyQt5.QtGui import QStandardItemModel, QStandardItem
+#
+#
+# class FormOrders(QMainWindow, Ui_Form_Orders):
+#     def __init__(self, parent=None):
+#         super(FormOrders, self).__init__(parent)
+#         self.setupUi(self)
+#         self.pushButton_Hide.clicked.connect(self.hide)
+#         self.model = QStandardItemModel(4, 3)
+#         self.model.setHorizontalHeaderLabels(['id', '姓名', '年龄'])
+#         self.listView.setModel(self.model)
+#         item11 = QStandardItem("1")
+#         item12 = QStandardItem("小明")
+#         item13 = QStandardItem("20")
+#         self.model.setItem(0, 0, item11)
+#         self.model.setItem(0, 1, item12)
+#         self.model.setItem(0, 2, item13)
+#
+#
+# class FormTradingStatus(QMainWindow, Ui_Form_TradingStatus):
+#     def __init__(self, parent=None):
+#         super(FormTradingStatus, self).__init__(parent)
+#         self.setupUi(self)
+#         self.model = QStandardItemModel(4, 3)
+#         self.model.setHorizontalHeaderLabels(['id', '姓名', '年龄'])
+#         self.tableView_PnL.setModel(self.model)
+#         self.tableView_PnL.setSelectionBehavior(QAbstractItemView.SelectRows)
+#         self.tableView_PnL.setSelectionMode(QAbstractItemView.SingleSelection)
+#         self.tableView_PnL.setEditTriggers(QAbstractItemView.NoEditTriggers)
+#         # self.tableView_PnL.setGridStyle(Qt.)
+#         item11 = QStandardItem("1")
+#         item12 = QStandardItem("小明")
+#         item13 = QStandardItem("20")
+#         self.model.setItem(0, 0, item11)
+#         self.model.setItem(0, 1, item12)
+#         self.model.setItem(0, 2, item13)
+#
+#     def test(self, item):
+#         print("You pressed on {0}x{1}".format(item.column(), item.row()))
+#         self.tableView_PnL.clearSelection()
+#         self.tableView_PnL.selectRow(item.row())
+#
+#     def test2(self, item):
+#         print("clicked")
+#         self.tableView_PnL.clearSelection()
+#         self.tableView_PnL.selectRow(item.row())
+#         pass
+#
+#     def test3(self, item):
+#         print("selected clicked")
+#         pass
 
 # if __name__ == "__main__":
     # # 固定的，PyQt5程序都需要QApplication对象。sys.argv是命令行参数列表，确保程序可以双击运行
@@ -87,24 +87,37 @@ import multiprocessing
 #     print(conn2.recv())
 #     print(conn2.recv())
 
-import socket,sys
+import socket,sys, threading
 HOST = '127.0.0.1'
 PORT = 22222
 ADDR =(HOST,PORT)
 BUFSIZE = 1024
+
+
+class SocketReceiverNewThread(threading.Thread):
+    def __init__(self, in_cnn):
+        threading.Thread.__init__(self)
+        self.cnn = in_cnn
+
+    def run(self):
+        while True:
+            recv_data = sock.recv(BUFSIZE)
+            print('receive:', recv_data.decode('utf-8'))
+
 
 sock = socket.socket()
 try:
     sock.connect(ADDR)
     print('have connected with server')
 
+    r = SocketReceiverNewThread(sock)
+    r.start()
+
     while True:
       data = input('lockey# ')
       if len(data)>0:
         print('send:',data)
         sock.sendall(data.encode('utf-8')) #不要用send()
-        recv_data = sock.recv(BUFSIZE)
-        print('receive:',recv_data.decode('utf-8'))
       else:
         sock.close()
         break

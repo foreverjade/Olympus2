@@ -1,11 +1,11 @@
 #  the core part of Olympus Trading System
 
 from socketserver import ThreadingTCPServer
-
-from SysSharedMemory import *
-from SysHandler import *
-from SysManager import *
-from SysLog import *
+from MFH_Constant import *
+from MFH_SharedMemory import *
+from MFH_Handler import *
+from MFH_Manager import *
+from MFH_Log import *
 
 
 # from old.SysWindow import *
@@ -20,19 +20,12 @@ class SysCore:
     version = "Olympus Beta 1.0.0507"
     heart = "For my forever love, Ying"
 
-    # login info
-    ip = '127.0.0.1'
-    port = 11111
-    pwd_unlock = '900213'
-
     # internal communication
-    soc_port = 22222
-    event_id = 1
+    event_id = 0
 
     def __init__(self):
-
         # sub systems
-        self.shm = SysShardMemory(self, 100)
+        self.shm = SysShardMemory(self)
         self.sys_file = SysFileManager(self)
         self.sys_log = SysLog(self)
         self.sys_feed = SysFeedManager()
@@ -43,7 +36,7 @@ class SysCore:
 
         # futu component
         self.sys_log.log_out(['SYS'], '=========================NEW PROGRAMME=======================')
-        self.quote_ctx = OpenQuoteContext(host=SysCore.ip, port=SysCore.port)
+        self.quote_ctx = OpenQuoteContext(host=MFH_IP, port=MFH_PORT)
         self.sys_log.log_out(['SYS'], 'Connection established!')
         OrderBookHandler.shm = self.shm
         OrderBookHandler.output_file = self.sys_file.file_quote_handler_output
@@ -58,7 +51,7 @@ class SysCore:
         if self.quote_ctx.set_handler(self.ticker_handler) == RET_OK:
             self.sys_log.log_out(['SYS'], 'Ticker Handler is ready!')
 
-        self.set_socket_handler(SysCore.ip, SysCore.soc_port)
+        self.set_socket_handler(MFH_IP, MFH_SOCKET_PORT)
         self.sys_log.log_out(['SYS'], 'Internal Socket Handler is ready!')
 
         # self.feed_subscribe('US.TSLA220513C855000')
@@ -99,25 +92,19 @@ class SysCore:
         '''
         [EVENTID, EVENT, CODE, VALUE, ADDITIONAL ...]
         SAMPLE: "1,SUBSCRIBE,US.TSLA220513C855000,1"
+        SAMPLE: "2,UNSUBSCRIBE,US.TSLA220513C855000,1"
         [EVENTID, EVENT, CODE, EVENTID_IN, STATUS, REMARK ...]
         SAMPLE: "1,RESPONSE,US.TSLA220513C855000,1,1,SUBSCRIBE Subscribe Successfully"
         '''
 
-        IN_EVENTID = 0
-        IN_EVENT = 1
-        IN_CODE = 2
-        IN_VALUE = 3
-        IN_ADDITIONAL = 4
-
-        OUT_EVENTID = 0
-        OUT_EVENT = 1
-        OUT_CODE = 2
-        OUT_EVENTID_IN = 3
-        OUT_STATUS = 4
-        OUT_REMARK = 5
-
         in_list = in_str.split(',')
-        if in_list[IN_EVENT] == 'SUBSCRIBE':
+        if len(in_list)<4:
+            return ''
+        SysCore.event_id += 1
+        if in_list[IN_EVENT] == 'HEARTBEAT':
+            return "{},{},{},{},{},{}".format(SysCore.event_id, "HEARTBEAT", in_list[IN_CODE],
+                                              in_list[IN_EVENTID], 1, "HB")
+        elif in_list[IN_EVENT] == 'SUBSCRIBE':
             self.sys_feed.add_pair((client_pair, in_list[IN_CODE]))
             status, message = self.feed_subscribe(in_list[IN_CODE])
             if status:
@@ -127,15 +114,22 @@ class SysCore:
             return "{},{},{},{},{},{}".format(SysCore.event_id, "RESPONSE", in_list[IN_CODE],
                                               in_list[IN_EVENTID], status + 0, message)
         elif in_list[IN_EVENT] == 'UNSUBSCRIBE':
-            self.sys_feed.del_pair((client_pair, in_list[IN_CODE]))
-            if in_list[IN_CODE] not in self.sys_feed.prod_client_map:
+            if in_list[IN_CODE] in self.sys_feed.prod_client_map \
+                    and self.sys_feed.prod_client_map[in_list[IN_CODE]] == [client_pair]:
                 status, message = self.feed_unsubscribe(in_list[IN_CODE])
                 if status:
                     message = in_list[IN_CODE] + " Unsubscribe Successfully"
-                else:
-                    self.sys_feed.add_pair((client_pair, in_list[IN_CODE]))
+                    self.sys_feed.del_pair((client_pair, in_list[IN_CODE]))
                 return "{},{},{},{},{},{}".format(SysCore.event_id, "RESPONSE", in_list[IN_CODE],
                                                   in_list[IN_EVENTID], status + 0, message)
+        else:
+            return "{},{},{},{},{},{}".format(SysCore.event_id, "RESPONSE", in_list[IN_CODE],
+                                              in_list[IN_EVENTID], 0, "Unknown Event!")
+
+    def check_subscribe(self):
+        for prod in self.shm.code_map:
+            if prod not in self.sys_feed.prod_client_map:
+                self.feed_unsubscribe(prod)
 
     def set_socket_handler(self, host, port):
         SocketHandler.sys_log = self.sys_log
@@ -272,9 +266,11 @@ class SysCore:
             self.shm.add_code(security_code)
             self.sys_log.log_out(['SYS'],
                                  'Subscribe Successfully:' + str(self.quote_ctx.query_subscription()))
+            self.check_subscribe()
             return True, err_message
         else:
             self.sys_log.log_out(['SYS', 'ERR'], str(err_message))
+            self.check_subscribe()
             return False, err_message
 
     #
@@ -300,9 +296,11 @@ class SysCore:
             self.sys_log.log_out(['SYS'],
                                  'Unsubscribe successfully！current subscription status:' + str(
                                      self.quote_ctx.query_subscription()))  # 取消订阅后查询订阅状态
+            self.check_subscribe()
             return True, err_message_unsub
         else:
             self.sys_log.log_out(['SYS', 'ERR'], 'Failed to cancel subscriptions！' + str(err_message_unsub))
+            self.check_subscribe()
             return False, err_message_unsub
     #
     # def callback_orderbook(self, data):

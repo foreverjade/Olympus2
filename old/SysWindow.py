@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QHeaderView, QMenu
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QTimer
-from SysLog import WinLog
+from MarketFeedHandler.MFH_Log import WinLog
 from SysFunction import *
 from Form_Orders import *
 from Form_TradingStatus import *

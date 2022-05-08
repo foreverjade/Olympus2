@@ -1,10 +1,9 @@
-# from RuleBase import *
-# from RuleUSOptionManual import *
-# from SysWindow import *
+from MFH_Constant import *
 
 from datetime import *
 import os
-import queue
+import threading
+
 
 
 #
@@ -213,9 +212,10 @@ class SysFeedManager:
     def __init__(self):
         # self.client_prod_map = {("127.0.0.1", 53307): ["US.APPL"]}
         # self.prod_client_map = {"US.APPL": [("127.0.0.1", 53307)]}
+        # self.client_request_map = {("127.0.0.1", 53307): queue[msg1,msg2,...]}
         self.client_prod_map = {}
         self.prod_client_map = {}
-        self.client_queue_map = {}
+        self.client_request_map = {}
 
     def add_pair(self, in_client_prod_pair):
         client = in_client_prod_pair[0]
@@ -225,7 +225,6 @@ class SysFeedManager:
                 self.client_prod_map[client].append(prod)
         else:
             self.client_prod_map[client] = [prod]
-            self.client_queue_map[client] = queue.Queue()
         if prod in self.prod_client_map:
             if client not in self.prod_client_map[prod]:
                 self.prod_client_map[prod].append(client)
@@ -240,12 +239,25 @@ class SysFeedManager:
                 self.client_prod_map[client].remove(prod)
                 if len(self.client_prod_map[client]) == 0:
                     del self.client_prod_map[client]
-                    del self.client_queue_map[client]
-        if prod not in self.prod_client_map:
+        if prod in self.prod_client_map:
             if client in self.prod_client_map[prod]:
                 self.prod_client_map[prod].remove(client)
                 if len(self.prod_client_map[prod]) == 0:
                     del self.prod_client_map[prod]
+
+    def del_client(self, in_client):
+        if in_client in self.client_prod_map:
+            del self.client_prod_map[in_client]
+        del_list =[]
+        for prod in self.prod_client_map:
+            if in_client in self.prod_client_map[prod]:
+                self.prod_client_map[prod].remove(in_client)
+                if len(self.prod_client_map[prod]) == 0:
+                    del_list.append(prod)
+        for prod in del_list:
+            del self.prod_client_map[prod]
+        if in_client in self.client_request_map:
+            del self.client_request_map[in_client]
 
 
 class SysFileManager:
@@ -253,7 +265,7 @@ class SysFileManager:
         self.link_core = p_core
         # file path
         date_str = datetime.now().strftime("%Y%m%d")
-        path_data = "C:/Users/shrfa/PycharmProjects/pythonProject/Data/" + date_str + "/"
+        path_data = PROJECT_PATH + MFH_FOLDER + "Data/" + date_str + "/"
         folder = os.path.exists(path_data)
         if not folder:
             os.makedirs(path_data)
@@ -264,7 +276,7 @@ class SysFileManager:
         self.file_order_handler_output = open(path_data + date_str + "_ORDER_DATA.csv", mode='a+')
         self.file_deal_handler_output = open(path_data + date_str + "_DEAL_DATA.csv", mode='a+')
 
-        path_log = "Logs/"
+        path_log = PROJECT_PATH + MFH_FOLDER + "Logs/"
         self.file_sys_log_output = open(path_log + date_str + "_SYS_LOG.log", encoding='utf-8', mode='a+')
 
     def update(self):

@@ -1,4 +1,4 @@
-import numpy as np
+from MFH_Constant import *
 from multiprocessing import shared_memory
 
 '''
@@ -8,17 +8,16 @@ OrderBookTest  {'code': 'HK.00700', 'svr_recv_time_bid': '2020-04-29 15:55:53.29
 
 
 class SysShardMemory:
-    def __init__(self, p_core, in_prod_cnt=100):
+    sys_log = None
+
+    def __init__(self, p_core):
         self.link_core = p_core
-        self.prod_limit = in_prod_cnt
         self.code_map = {}
-        self.order_book_line = np.array([('None', 0, False, 0.0, 0, 0, 0.0, 0, 0)],
-                                        dtype=[('code', 'U24'), ('timestamp', 'i8'), ('log', 'b'),
-                                               ('bid_p1', 'f4'), ('bid_q1', 'i4'), ('bid_c1', 'i4'),
-                                               ('ask_p1', 'f4'), ('ask_q1', 'i4'), ('ask_c1', 'i4')])
-        self.shm = shared_memory.SharedMemory(name='MFH', create=True, size=self.order_book_line.nbytes * in_prod_cnt)
-        self.data = np.ndarray((in_prod_cnt,), dtype=self.order_book_line.dtype, buffer=self.shm.buf)
-        # self.close()
+        self.shm = shared_memory.SharedMemory(name='MFH', create=True,
+                                              size=MFH_DEF_LINE.nbytes + ORDER_BOOK_LINE.nbytes * MFH_CAPACITY)
+        self.definition = np.ndarray((1,), dtype=MFH_DEF_LINE.dtype, buffer=self.shm.buf)
+        self.trade_tables = np.ndarray((MFH_CAPACITY,), dtype=ORDER_BOOK_LINE.dtype, buffer=self.shm.buf,
+                                       offset=MFH_DEF_LINE.nbytes)
 
     def used_size(self):
         return len(self.code_map)
@@ -35,12 +34,14 @@ class SysShardMemory:
     def add_code(self, in_code):
         if in_code not in self.code_map:
             code_map_id = self.find_id()
-            self.data['code'][code_map_id] = in_code
+            self.trade_tables['code'][code_map_id] = in_code
             self.code_map[in_code] = code_map_id
-            self.__dict__[in_code] = self.data[code_map_id]
+            self.__dict__[in_code] = self.trade_tables[code_map_id]
+            self.definition['mfh_update'][0] = True
+            self.definition['used_slot'][0] = self.used_size()
             self.link_core.sys_log.log_out(['SYS', 'SHM'],
                                            'Shared Memory code added: ' + in_code + '; Capacity: ' + str(
-                                               self.used_size()) + '/' + str(self.prod_limit))
+                                               self.definition['used_slot'][0]) + '/' + str(MFH_CAPACITY))
             return True
         else:
             self.link_core.sys_log.log_out(['SYS', 'SHM'], 'Shared Memory code already exists: ' + in_code)
@@ -49,9 +50,12 @@ class SysShardMemory:
     def del_code(self, in_code):
         if in_code in self.code_map:
             del self.code_map[in_code]
+            del self.__dict__[in_code]
+            self.definition['mfh_update'][0] = True
+            self.definition['used_slot'][0] = self.used_size()
             self.link_core.sys_log.log_out(['SYS', 'SHM'],
                                            'Shared Memory code deleted: ' + in_code + '; Capacity: ' + str(
-                                               self.used_size()) + '/' + str(self.prod_limit))
+                                               self.definition['used_slot'][0]) + '/' + str(MFH_CAPACITY))
             return True
         else:
             self.link_core.sys_log.log_out(['SYS', 'SHM'], 'Shared Memory code does not exists: ' + in_code)
@@ -60,6 +64,8 @@ class SysShardMemory:
     def __getitem__(self, item):
         if item in self.__dict__:
             return self.__dict__[item]
+        else:
+            return None
 
     def close(self):
         self.shm.close()

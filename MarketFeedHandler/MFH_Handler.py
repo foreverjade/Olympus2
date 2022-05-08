@@ -1,3 +1,6 @@
+from MFH_Constant import *
+from MFH_Core import *
+
 import time
 from futu import *
 import tkinter as tk
@@ -7,8 +10,7 @@ from datetime import datetime
 from PyQt5.QtGui import QColor
 from socketserver import BaseRequestHandler, ThreadingTCPServer
 import threading
-
-BUFF_SIZE = 1024
+import queue
 
 
 class OrderBookHandler(OrderBookHandlerBase):
@@ -36,9 +38,13 @@ class OrderBookHandler(OrderBookHandlerBase):
             #                 content['svr_recv_time_bid'], content['code'],
             #                 content['Bid'][0][0], content['Bid'][0][1], content['Bid'][0][2],
             #                 content['Ask'][0][0], content['Ask'][0][1], content['Ask'][0][2]))
-            if content['code'] in OrderBookHandler.feed_map.prod_client_map:
+            # if content['code'] in OrderBookHandler.feed_map.prod_client_map:
+            try:
+                out_str = "0,OBUPDATE," + content['code'] + ",1,0"
                 for client in OrderBookHandler.feed_map.prod_client_map[content['code']]:
-                    OrderBookHandler.feed_map.client_queue_map[client].put(content)
+                    OrderBookHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
+            except KeyError:
+                pass
 
             if OrderBookHandler.shm and content['code'] in OrderBookHandler.shm:
                 OrderBookHandler.shm[content['code']]['bid_p1'] = content['Bid'][0][0]
@@ -157,40 +163,68 @@ class TradeDealHandler(TradeDealHandlerBase):
         return RET_OK, data
 
 
+# class SocketSenderNewThread(threading.Thread):
+#     def __init__(self, in_cnn, in_client_addr, in_feed_map):
+#         threading.Thread.__init__(self)
+#         self.cnn = in_cnn
+#         self.client_address = in_client_addr
+#         self.feed_map = in_feed_map
+#
+#
+#     def run(self):
+#         client_str = "{}({})".format(self.client_address[0], self.client_address[1])
+#         while True:
+#             try:
+#                 self.cnn.sendall()
+#                 SocketHandler.sys_log.log_out(['CMM', 'EVT'], client_str + " Send: " + out_str)
+#             except ConnectionResetError:
+#                 break
+
+
 class SocketHandler(BaseRequestHandler):
     sys_log = None
     call_back_func = None
-    # feed_map = None
+    feed_map = None
 
     def handle(self):
         address, pid = self.client_address
+        if SocketHandler.feed_map:
+            self.feed_map.client_request_map[self.client_address] = self.request
         client_str = "{}({})".format(address, pid)
         if SocketHandler.sys_log:
             SocketHandler.sys_log.log_out(['SYS', 'CMM'], client_str + " Connected")
         while True:
-            # if SocketHandler.feed_map and (address, pid) in SocketHandler.feed_map.client_queue_map:
-            #     q = SocketHandler.feed_map.client_queue_map[(address, pid)]
-            #     while not q.empty():
-            #         out_str = str(q.get())
-            #         print ('==================',out_str)
-            #         self.request.sendall(out_str.encode('utf-8'))
-
-            data = self.request.recv(BUFF_SIZE)
-            if len(data) > 0:
-                in_str = data.decode('utf-8')
-                if SocketHandler.sys_log:
-                    SocketHandler.sys_log.log_out(['CMM', 'EVT'], client_str + " Recv: " + in_str)
-                if SocketHandler.call_back_func:
-                    out_str = SocketHandler.call_back_func(in_str, (address, pid))
+            try:
+                data = self.request.recv(BUFF_SIZE)
+                if len(data) > 0 and data != b'q':
+                    in_str = data.decode('utf-8')
+                    if SocketHandler.sys_log:
+                        SocketHandler.sys_log.log_out(['CMM', 'EVT'], client_str + " Recv: " + in_str)
+                    out_str = ''
+                    if SocketHandler.call_back_func:
+                        out_str = SocketHandler.call_back_func(in_str, self.client_address)
+                    print(out_str)
+                    if len(out_str) > 0 and SocketHandler.feed_map:
+                        self.request.sendall(out_str.encode('utf-8'))
+                    cur_threading = threading.current_thread()
                 else:
-                    out_str = 'response'
-                self.request.sendall(out_str.encode('utf-8'))
+                    self.request.close()
+                    self.feed_map.del_client(self.client_address)
+                    if SocketHandler.sys_log:
+                        SocketHandler.sys_log.log_out(['SYS', 'CMM'], client_str + " Disconnected")
+                    break
+            except ConnectionResetError:
+                self.request.close()
+                self.feed_map.del_client(self.client_address)
                 if SocketHandler.sys_log:
-                    SocketHandler.sys_log.log_out(['CMM', 'EVT'], client_str + " Send: " + out_str)
-                cur_threading = threading.current_thread()
-            else:
+                    SocketHandler.sys_log.log_out(['SYS', 'CMM'],
+                                                  client_str + " Disconnected With ConnectionResetError")
+                break
+            except OSError:
+                self.request.close()
+                self.feed_map.del_client(self.client_address)
                 if SocketHandler.sys_log:
-                    SocketHandler.sys_log.log_out(['SYS', 'CMM'], client_str + " Disconnected")
+                    SocketHandler.sys_log.log_out(['SYS', 'CMM'],
+                                                  client_str + " Disconnected With OSError")
                 break
 
-        pass

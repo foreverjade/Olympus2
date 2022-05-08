@@ -1,6 +1,6 @@
 from SysWindow import *
 from SysOrderAgent import *
-from SysLog import *
+from MarketFeedHandler.MFH_Log import *
 from abc import ABCMeta, abstractmethod
 
 
