@@ -98,19 +98,24 @@ class SysCore:
         '''
 
         in_list = in_str.split(',')
-        if len(in_list)<4:
+        if len(in_list) < 4:
             return ''
         SysCore.event_id += 1
         if in_list[IN_EVENT] == 'HEARTBEAT':
             return "{},{},{},{},{},{}".format(SysCore.event_id, "HEARTBEAT", in_list[IN_CODE],
                                               in_list[IN_EVENTID], 1, "HB")
         elif in_list[IN_EVENT] == 'SUBSCRIBE':
-            self.sys_feed.add_pair((client_pair, in_list[IN_CODE]))
-            status, message = self.feed_subscribe(in_list[IN_CODE])
-            if status:
-                message = in_list[IN_CODE] + " Subscribe Successfully"
-            else:
-                self.sys_feed.del_pair((client_pair, in_list[IN_CODE]))
+            message = "Subscribed Already"
+            status = False
+            if in_list[IN_CODE] not in self.sys_feed.prod_client_map \
+                    or (in_list[IN_CODE] in self.sys_feed.prod_client_map
+                        and client_pair not in self.sys_feed.prod_client_map[in_list[IN_CODE]]):
+                self.sys_feed.add_pair((client_pair, in_list[IN_CODE]))
+                status, message = self.feed_subscribe(in_list[IN_CODE])
+                if status:
+                    message = "Subscribe Successfully"
+                else:
+                    self.sys_feed.del_pair((client_pair, in_list[IN_CODE]))
             return "{},{},{},{},{},{}".format(SysCore.event_id, "RESPONSE", in_list[IN_CODE],
                                               in_list[IN_EVENTID], status + 0, message)
         elif in_list[IN_EVENT] == 'UNSUBSCRIBE':
@@ -118,7 +123,7 @@ class SysCore:
                     and self.sys_feed.prod_client_map[in_list[IN_CODE]] == [client_pair]:
                 status, message = self.feed_unsubscribe(in_list[IN_CODE])
                 if status:
-                    message = in_list[IN_CODE] + " Unsubscribe Successfully"
+                    message = "Unsubscribe Successfully"
                     self.sys_feed.del_pair((client_pair, in_list[IN_CODE]))
                 return "{},{},{},{},{},{}".format(SysCore.event_id, "RESPONSE", in_list[IN_CODE],
                                                   in_list[IN_EVENTID], status + 0, message)
@@ -263,9 +268,9 @@ class SysCore:
                                                         [SubType.ORDER_BOOK, SubType.TICKER],
                                                         is_first_push=True, extended_time=True)
         if ret_sub == RET_OK:
-            self.shm.add_code(security_code)
             self.sys_log.log_out(['SYS'],
                                  'Subscribe Successfully:' + str(self.quote_ctx.query_subscription()))
+            self.shm.add_code(security_code)
             self.check_subscribe()
             return True, err_message
         else:
@@ -292,10 +297,10 @@ class SysCore:
         ret_unsub, err_message_unsub = self.quote_ctx.unsubscribe([security_code],
                                                                   [SubType.ORDER_BOOK, SubType.TICKER])
         if ret_unsub == RET_OK:
-            self.shm.del_code(security_code)
             self.sys_log.log_out(['SYS'],
                                  'Unsubscribe successfully！current subscription status:' + str(
                                      self.quote_ctx.query_subscription()))  # 取消订阅后查询订阅状态
+            self.shm.del_code(security_code)
             self.check_subscribe()
             return True, err_message_unsub
         else:

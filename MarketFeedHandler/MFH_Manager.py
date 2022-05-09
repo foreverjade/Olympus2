@@ -270,7 +270,7 @@ class SysFileManager:
         if not folder:
             os.makedirs(path_data)
         self.file_quote_handler_output = open(path_data + date_str + "_QUOTE_DATA.csv", mode='a+')
-        self.file_quote_handler_output.write('TIME,CODE,BID_P1,BID_Q1,BID_C1,ASK_P1,ASK_Q1,ASK_C1\n')
+        self.file_quote_handler_output.write('TIMEBID,TIMEASK,CODE,BID_P1,BID_Q1,BID_C1,ASK_P1,ASK_Q1,ASK_C1\n')
         self.file_ticker_handler_output = open(path_data + date_str + "_TICKER_DATA.csv", mode='a+')
         self.file_ticker_handler_output.write('TIME,CODE,PRICE,QTY,SIDE\n')
         self.file_order_handler_output = open(path_data + date_str + "_ORDER_DATA.csv", mode='a+')

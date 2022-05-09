@@ -37,6 +37,8 @@ class SysShardMemory:
             self.trade_tables['code'][code_map_id] = in_code
             self.code_map[in_code] = code_map_id
             self.__dict__[in_code] = self.trade_tables[code_map_id]
+            # print('========add code:', in_code)
+            # print('========in_code:', self.__dict__[in_code]['code'])
             self.definition['mfh_update'][0] = True
             self.definition['used_slot'][0] = self.used_size()
             self.link_core.sys_log.log_out(['SYS', 'SHM'],

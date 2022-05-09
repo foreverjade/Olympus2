@@ -15,7 +15,9 @@ class ClientReceiverNewThread(threading.Thread):
         while True:
             try:
                 recv_data = self.cnn.recv(BUFF_SIZE)
-                print('receive:', recv_data.decode('utf-8'))
+                if len(recv_data) > 0:
+                    in_str = recv_data.decode('utf-8')
+                    print('receive:', in_str)
             except Exception:
                 break
 
@@ -35,17 +37,22 @@ class ClientSenderNewThread(threading.Thread):
         r.start()
         try:
             # while True:
-            for i in range(5):
-                # data = "1,HEARTBEAT,NONE,1,0"
-                # self.sock.sendall(data.encode('utf-8'))
-                # print('send:', data)
-                data = "1,SUBSCRIBE,US.TSLA220513C855000,1"
-                self.sock.sendall(data.encode('utf-8'))
-                print('send:', data)
-                # data = "2,UNSUBSCRIBE,US.TSLA220513C855000,1"
-                # self.sock.sendall(data.encode('utf-8'))
-                # print('send:', data)
-                time.sleep(0.5)
+            # for i in range(5):
+            # data = "1,HEARTBEAT,NONE,1,0"
+            # self.sock.sendall(data.encode('utf-8'))
+            # print('send:', data)
+            data = "1,SUBSCRIBE,US.TSLA220513C855000,1"
+            self.sock.sendall(data.encode('utf-8'))
+            print('send:', data)
+            # data = "2,UNSUBSCRIBE,US.TSLA220513C855000,1"
+            # self.sock.sendall(data.encode('utf-8'))
+            # print('send:', data)
+            # time.sleep(0.5)
+            time.sleep(700)
+            data = "2,UNSUBSCRIBE,US.TSLA220513C855000,1"
+            self.sock.sendall(data.encode('utf-8'))
+            print('send:', data)
+            time.sleep(5)
             self.sock.sendall('q'.encode('utf-8'))
             print('Sender closed!')
             self.sock.close()
