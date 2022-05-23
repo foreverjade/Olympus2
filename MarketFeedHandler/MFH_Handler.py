@@ -40,22 +40,25 @@ class OrderBookHandler(OrderBookHandlerBase):
             #                 content['Ask'][0][0], content['Ask'][0][1], content['Ask'][0][2]))
             # if content['code'] in OrderBookHandler.feed_map.prod_client_map:
             try:
-                # out_str = "0,OBUPDATE," + content['code'] + ",1,0"
-                out_str = str(content)
+                out_str = "0,OBUPDATE," + content['code'] + ",1,0"
+                # out_str = str(content)
                 for client in OrderBookHandler.feed_map.prod_client_map[content['code']]:
                     OrderBookHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
             except KeyError:
                 print('============cant find key')
-            OrderBookHandler.shm[content['code']]['log'] = True
+                # OrderBookHandler.feed_map.del_client[]
+                # del OrderBookHandler.feed_map.prod_client_map[content['code']]
+
+            # OrderBookHandler.shm[content['code']]['log'] = True
             if OrderBookHandler.shm is not None and OrderBookHandler.shm[content['code']] is not None:
-                OrderBookHandler.shm[content['code']]['bid_p1'] = content['Bid'][0][0]
+                OrderBookHandler.shm[content['code']]['bid_p1'] = int(content['Bid'][0][0] * PRICE_ADJ)
                 OrderBookHandler.shm[content['code']]['bid_q1'] = content['Bid'][0][1]
                 OrderBookHandler.shm[content['code']]['bid_c1'] = content['Bid'][0][2]
-                OrderBookHandler.shm[content['code']]['ask_p1'] = content['Ask'][0][0]
+                OrderBookHandler.shm[content['code']]['ask_p1'] = int(content['Ask'][0][0] * PRICE_ADJ)
                 OrderBookHandler.shm[content['code']]['ask_q1'] = content['Ask'][0][1]
                 OrderBookHandler.shm[content['code']]['ask_c1'] = content['Ask'][0][2]
-                OrderBookHandler.shm[content['code']]['timestamp_bid'] = 0  # content['svr_recv_time_bid']
-                OrderBookHandler.shm[content['code']]['timestamp_ask'] = 0  # content['svr_recv_time_ask']
+                OrderBookHandler.shm[content['code']]['timestamp_bid'] = content['svr_recv_time_bid']
+                OrderBookHandler.shm[content['code']]['timestamp_ask'] = content['svr_recv_time_ask']
                 if OrderBookHandler.output_file and OrderBookHandler.shm[content['code']]['log']:
                     OrderBookHandler.output_file.write("{},{},{},{},{},{},{},{},{},{}".format(
                         content['svr_recv_time_bid'], content['svr_recv_time_ask'], content['code'],
@@ -90,21 +93,28 @@ class TickerHandler(TickerHandlerBase):
             # print(content)
             for trade_line in content:
                 try:
-                    # out_str = "0,OBUPDATE," + content['code'] + ",1,0"
-                    out_str = str(trade_line)
+                    out_str = "0,TDUPDATE," + trade_line['code'] + ",1,0"
+                    # out_str = str(trade_line)
+                    # print(trade_line)
                     for client in TickerHandler.feed_map.prod_client_map[trade_line['code']]:
                         TickerHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
                 except KeyError:
                     print('============cant find key')
-                # self.shm[trade_line['code']]['bid_p1'] = trade_line['Bid'][0][0]
-                if TickerHandler.output_file and TickerHandler.shm[trade_line['code']]['log']:
-                    TickerHandler.output_file.write("{},{},{},{},{},{}".format(
-                        trade_line['time'], trade_line['code'],
-                        trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
-                    OrderBookHandler.output_file.write("{},{},{},{},{},{}".format(
-                        trade_line['time'], trade_line['code'],
-                        trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
-                    TickerHandler.output_file.flush()
+                if TickerHandler.shm is not None and TickerHandler.shm[trade_line['code']] is not None:
+                    trade_idx = TickerHandler.shm[trade_line['code']]['trade_id'] + 1
+                    trade_subidx = str(trade_idx % 5)
+                    TickerHandler.shm[trade_line['code']]['trade_p' + trade_subidx] = int(float(trade_line['price']) * PRICE_ADJ)
+                    TickerHandler.shm[trade_line['code']]['trade_q' + trade_subidx] = int(trade_line['volume'])
+                    TickerHandler.shm[trade_line['code']]['trade_d' + trade_subidx] = (trade_line['ticker_direction'] == 'BUY')
+                    TickerHandler.shm[trade_line['code']]['trade_id'] = trade_idx
+                    if TickerHandler.output_file and TickerHandler.shm[trade_line['code']]['log']:
+                        TickerHandler.output_file.write("{},{},{},{},{},{}".format(
+                            trade_line['time'], trade_line['code'],
+                            trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
+                        OrderBookHandler.output_file.write("{},{},{},{},{},{}".format(
+                            trade_line['time'], trade_line['code'],
+                            trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
+                        TickerHandler.output_file.flush()
 
             # return RET_OK, ticker_frame_table
 

@@ -1,5 +1,6 @@
 from MarketFeedHandler.MFH_Constant import *
 from multiprocessing import shared_memory
+from SP_StrategyBase import *
 
 
 class PlfShardMemory:
@@ -20,3 +21,9 @@ class PlfShardMemory:
         for i in range(self.definition['used_slot'][0]):
             self.code_map[self.trade_tables['code'][i]] = i
             self.__dict__[self.trade_tables['code'][i]] = self.trade_tables[i]
+
+    def __getitem__(self, item):
+        if item in self.__dict__:
+            return self.__dict__[item]
+        else:
+            return None

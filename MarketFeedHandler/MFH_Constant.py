@@ -18,10 +18,19 @@ FUTU_UNLOCK = '900213'
 MFH_CAPACITY = 100
 MFH_DEF_LINE = np.array([(False, 0)],
                         dtype=[('mfh_update', 'b'), ('used_slot', 'i2')])
-ORDER_BOOK_LINE = np.array([('CODE', 0, 0, False, 0.0, 0, 0, 0.0, 0, 0)],
-                           dtype=[('code', 'U24'), ('timestamp_bid', 'i8'), ('timestamp_ask', 'i8'), ('log', 'b'),
-                                  ('bid_p1', 'f4'), ('bid_q1', 'i4'), ('bid_c1', 'i4'),
-                                  ('ask_p1', 'f4'), ('ask_q1', 'i4'), ('ask_c1', 'i4')])
+ORDER_BOOK_LINE = np.array([('CODE', '', '', False, 0.0, 0, 0, 0.0, 0, 0, '', 0,
+                             0, 0, False, 0, 0, False, 0, 0, False, 0, 0, False, 0, 0, False)],
+                           dtype=[('code', 'U24'), ('timestamp_bid', 'U24'), ('timestamp_ask', 'U24'), ('log', 'b'),
+                                  ('bid_p1', 'i4'), ('bid_q1', 'i4'), ('bid_c1', 'i4'),
+                                  ('ask_p1', 'i4'), ('ask_q1', 'i4'), ('ask_c1', 'i4'),
+                                  ('timestamp_lasttrade', 'U24'), ('trade_id', 'i4'),
+                                  ('trade_p0', 'i4'), ('trade_q0', 'i4'), ('trade_d0', 'b'),
+                                  ('trade_p1', 'i4'), ('trade_q1', 'i4'), ('trade_d1', 'b'),
+                                  ('trade_p2', 'i4'), ('trade_q2', 'i4'), ('trade_d2', 'b'),
+                                  ('trade_p3', 'i4'), ('trade_q3', 'i4'), ('trade_d3', 'b'),
+                                  ('trade_p4', 'i4'), ('trade_q4', 'i4'), ('trade_d4', 'b')
+                                  ])
+PRICE_ADJ = 1000
 
 # COMMUNICATION STANDARDS
 IN_EVENTID = 0
