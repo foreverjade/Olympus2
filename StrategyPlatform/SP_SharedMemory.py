@@ -27,3 +27,9 @@ class PlfShardMemory:
             return self.__dict__[item]
         else:
             return None
+
+    def set_log(self, in_prod, in_status):
+        if in_prod in self.code_map:
+            self.__dict__[in_prod]['log'] = in_status
+            print("[DATA] {} set log status {}".format(in_prod, in_status))
+

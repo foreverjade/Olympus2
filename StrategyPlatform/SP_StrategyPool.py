@@ -16,6 +16,7 @@ class StrategyPool:
             else:
                 self.prod_stg_map[prod] = [str_name]
         self.stg_list[str_name] = in_stg
+
         data = "1,SUBSCRIBE,US.TSLA220527C660000,1"
         StrategyPool.cnn.sendall(data.encode('utf-8'))
         print('send:', data)

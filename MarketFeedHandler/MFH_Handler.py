@@ -17,6 +17,7 @@ class OrderBookHandler(OrderBookHandlerBase):
     shm = None
     output_file = None
     feed_map = None
+    counter = None
 
     def on_recv_rsp(self, rsp_str):
         # ret_code, data = super(OrderBookHandler, self).on_recv_rsp(rsp_str)
@@ -33,23 +34,6 @@ class OrderBookHandler(OrderBookHandlerBase):
         # return RET_OK, data
         ret_code, content = self.parse_rsp_pb(rsp_str)
         if ret_code == RET_OK:
-            # print(content['code'])
-            # print("{},{},{},{},{},{},{},{}".format(
-            #                 content['svr_recv_time_bid'], content['code'],
-            #                 content['Bid'][0][0], content['Bid'][0][1], content['Bid'][0][2],
-            #                 content['Ask'][0][0], content['Ask'][0][1], content['Ask'][0][2]))
-            # if content['code'] in OrderBookHandler.feed_map.prod_client_map:
-            try:
-                out_str = "0,OBUPDATE," + content['code'] + ",1,0"
-                # out_str = str(content)
-                for client in OrderBookHandler.feed_map.prod_client_map[content['code']]:
-                    OrderBookHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
-            except KeyError:
-                print('============cant find key')
-                # OrderBookHandler.feed_map.del_client[]
-                # del OrderBookHandler.feed_map.prod_client_map[content['code']]
-
-            # OrderBookHandler.shm[content['code']]['log'] = True
             if OrderBookHandler.shm is not None and OrderBookHandler.shm[content['code']] is not None:
                 OrderBookHandler.shm[content['code']]['bid_p1'] = int(content['Bid'][0][0] * PRICE_ADJ)
                 OrderBookHandler.shm[content['code']]['bid_q1'] = content['Bid'][0][1]
@@ -60,12 +44,17 @@ class OrderBookHandler(OrderBookHandlerBase):
                 OrderBookHandler.shm[content['code']]['timestamp_bid'] = content['svr_recv_time_bid']
                 OrderBookHandler.shm[content['code']]['timestamp_ask'] = content['svr_recv_time_ask']
                 if OrderBookHandler.output_file and OrderBookHandler.shm[content['code']]['log']:
-                    OrderBookHandler.output_file.write("{},{},{},{},{},{},{},{},{},{}".format(
+                    OrderBookHandler.output_file.write("{},{},{},{},{},{},{},{},{},{},{}".format(
+                        OrderBookHandler.counter.value,
                         content['svr_recv_time_bid'], content['svr_recv_time_ask'], content['code'],
                         content['Bid'][0][0], content['Bid'][0][1], content['Bid'][0][2],
                         content['Ask'][0][0], content['Ask'][0][1], content['Ask'][0][2], '\n'))
                     OrderBookHandler.output_file.flush()
-
+                    OrderBookHandler.counter.increment()
+            out_str = "0,OBUPDATE," + content['code'] + ",1,0"
+            if content['code'] in OrderBookHandler.feed_map.prod_client_map:
+                for client in OrderBookHandler.feed_map.prod_client_map[content['code']]:
+                    OrderBookHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
         return ret_code, content
 
 
@@ -73,33 +62,14 @@ class TickerHandler(TickerHandlerBase):
     shm = None
     output_file = None
     feed_map = None
+    counter = None
 
     def on_recv_rsp(self, rsp_str):
-        # ret_code, data = super(TickerHandler, self).on_recv_rsp(rsp_str)
-        # if ret_code != RET_OK:
-        #     print("TickerTest: error, msg: %s" % data)
-        #     return RET_ERROR, data
-        # # print("Ticker ", data.to_dict('list'))
-        # if self.b_dataRecord:
-        #     pd.DataFrame(data).loc[0:0].to_csv(self.output_file, index=False,
-        #                                        header=self.output_file.tell() == 0)
-        # self.link_core.callback_ticker(data)
-        #
-        # return RET_OK, data
         ret_code, content = self.parse_rsp_pb(rsp_str)
         if ret_code != RET_OK:
             return ret_code, content
         else:
-            # print(content)
             for trade_line in content:
-                try:
-                    out_str = "0,TDUPDATE," + trade_line['code'] + ",1,0"
-                    # out_str = str(trade_line)
-                    # print(trade_line)
-                    for client in TickerHandler.feed_map.prod_client_map[trade_line['code']]:
-                        TickerHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
-                except KeyError:
-                    print('============cant find key')
                 if TickerHandler.shm is not None and TickerHandler.shm[trade_line['code']] is not None:
                     trade_idx = TickerHandler.shm[trade_line['code']]['trade_id'] + 1
                     trade_subidx = str(trade_idx % 5)
@@ -108,15 +78,17 @@ class TickerHandler(TickerHandlerBase):
                     TickerHandler.shm[trade_line['code']]['trade_d' + trade_subidx] = (trade_line['ticker_direction'] == 'BUY')
                     TickerHandler.shm[trade_line['code']]['trade_id'] = trade_idx
                     if TickerHandler.output_file and TickerHandler.shm[trade_line['code']]['log']:
-                        TickerHandler.output_file.write("{},{},{},{},{},{}".format(
-                            trade_line['time'], trade_line['code'],
-                            trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
-                        OrderBookHandler.output_file.write("{},{},{},{},{},{}".format(
+                        TickerHandler.output_file.write("{},{},{},{},{},{},{}".format(
+                            TickerHandler.counter.value,
                             trade_line['time'], trade_line['code'],
                             trade_line['price'], trade_line['volume'], trade_line['ticker_direction'], '\n'))
                         TickerHandler.output_file.flush()
-
-            # return RET_OK, ticker_frame_table
+                        OrderBookHandler.counter.increment()
+                out_str = "0,TDUPDATE," + trade_line['code'] + ",1,0"
+                if trade_line['code'] in TickerHandler.feed_map.prod_client_map:
+                    for client in TickerHandler.feed_map.prod_client_map[trade_line['code']]:
+                        TickerHandler.feed_map.client_request_map[client].sendall(out_str.encode('utf-8'))
+            return RET_OK, content
 
 
 class TradeOrderHandler(TradeOrderHandlerBase):
@@ -238,6 +210,7 @@ class SocketHandler(BaseRequestHandler):
             except ConnectionResetError:
                 self.request.close()
                 self.feed_map.del_client(self.client_address)
+                print
                 if SocketHandler.sys_log:
                     SocketHandler.sys_log.log_out(['SYS', 'CMM'],
                                                   client_str + " Disconnected With ConnectionResetError")

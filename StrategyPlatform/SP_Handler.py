@@ -14,14 +14,14 @@ class ClientReceiverNewThread(threading.Thread):
 
     def run(self):
         while True:
-            # try:
-            recv_data = self.cnn.recv(BUFF_SIZE)
-            if len(recv_data) > 0:
-                in_str = recv_data.decode('utf-8')
-                print('receive:', in_str)
-                self.core_link.data_communication(in_str)
-            # except Exception:
-            #     break
+            try:
+                recv_data = self.cnn.recv(BUFF_SIZE)
+                if len(recv_data) > 0:
+                    in_str = recv_data.decode('utf-8')
+                    print('receive:', in_str)
+                    self.core_link.data_communication(in_str)
+            except OSError:
+                break
         print('receiver closed')
 
 

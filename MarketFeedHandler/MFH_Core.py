@@ -41,12 +41,14 @@ class SysCore:
         OrderBookHandler.shm = self.shm
         OrderBookHandler.output_file = self.sys_file.file_quote_handler_output
         OrderBookHandler.feed_map = self.sys_feed
+        OrderBookHandler.counter = self.sys_file.data_id_counter
         self.quote_handler = OrderBookHandler()
         if self.quote_ctx.set_handler(self.quote_handler) == RET_OK:
             self.sys_log.log_out(['SYS'], 'Quote Handler is ready!')
         TickerHandler.shm = self.shm
         TickerHandler.output_file = self.sys_file.file_ticker_handler_output
         TickerHandler.feed_map = self.sys_feed
+        TickerHandler.counter = self.sys_file.data_id_counter
         self.ticker_handler = TickerHandler()
         if self.quote_ctx.set_handler(self.ticker_handler) == RET_OK:
             self.sys_log.log_out(['SYS'], 'Ticker Handler is ready!')

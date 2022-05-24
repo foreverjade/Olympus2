@@ -19,14 +19,13 @@ class PlfCore:
         self.strategy_pool = StrategyPool()
         print('Conn ready!')
 
+        time.sleep(1)
         self.strategy_pool.add_stg(OptionStrategyBase(['US.TSLA220527C660000']))
         # self.strategy_pool.print()
+        time.sleep(1)
+        self.shm.set_log('US.TSLA220527C660000', True)
 
-        time.sleep(2)
-        # data = "1,SUBSCRIBE,US.TSLA220527C660000,1"
-        # self.mfh_conn.sock.sendall(data.encode('utf-8'))
-        # print('send:', data)
-        time.sleep(20)
+        time.sleep(120)
         data = "2,UNSUBSCRIBE,US.TSLA220527C660000,1"
         self.mfh_conn.sock.sendall(data.encode('utf-8'))
         print('send:', data)
@@ -49,3 +48,7 @@ class PlfCore:
     def data_callback(self, in_prod, in_istrade):
         for stg_name in self.strategy_pool.prod_stg_map[in_prod]:
             self.strategy_pool.stg_list[stg_name].on_mfh_callback(in_prod, in_istrade)
+
+    def __del__(self):
+        pass
+

@@ -2,7 +2,9 @@ from MFH_Constant import *
 
 from datetime import *
 import os
-import threading
+
+from General.Counter import FastWriteCounter
+from threading import Lock
 
 
 
@@ -262,6 +264,7 @@ class SysFeedManager:
 
 class SysFileManager:
     def __init__(self, p_core):
+        self.data_id_counter = FastWriteCounter(1, 1)
         self.link_core = p_core
         # file path
         date_str = datetime.now().strftime("%Y%m%d")
@@ -270,9 +273,9 @@ class SysFileManager:
         if not folder:
             os.makedirs(path_data)
         self.file_quote_handler_output = open(path_data + date_str + "_QUOTE_DATA.csv", mode='a+')
-        self.file_quote_handler_output.write('TIMEBID,TIMEASK,CODE,BID_P1,BID_Q1,BID_C1,ASK_P1,ASK_Q1,ASK_C1\n')
+        self.file_quote_handler_output.write('ID,TIMEBID,TIMEASK,CODE,BID_P1,BID_Q1,BID_C1,ASK_P1,ASK_Q1,ASK_C1\n')
         self.file_ticker_handler_output = open(path_data + date_str + "_TICKER_DATA.csv", mode='a+')
-        self.file_ticker_handler_output.write('TIME,CODE,PRICE,QTY,SIDE\n')
+        self.file_ticker_handler_output.write('ID,TIME,CODE,PRICE,QTY,SIDE\n')
         self.file_order_handler_output = open(path_data + date_str + "_ORDER_DATA.csv", mode='a+')
         self.file_deal_handler_output = open(path_data + date_str + "_DEAL_DATA.csv", mode='a+')
 
